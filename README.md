@@ -2,11 +2,12 @@
 
 East London trivia game hosted on Vercel. The shared leaderboard and one-attempt-per-browser rule are handled by the `/api/leaderboard` serverless function.
 
-## Vercel setup
+## Supabase and Vercel setup
 
-1. Import this repository as a Vercel project.
-2. Connect a Vercel KV-compatible Redis store to the project and configure `KV_REST_API_URL` and `KV_REST_API_TOKEN` in the project's environment variables.
-3. Redeploy after adding the variables.
+1. In Supabase, open **SQL Editor** and run [`supabase/schema.sql`](./supabase/schema.sql).
+2. In Vercel, set `SUPABASE_URL` to your Supabase project URL and `SUPABASE_SERVICE_ROLE_KEY` to the project's service-role key.
+3. Keep the service-role key server-side only; never add it to the page or commit it.
+4. Redeploy after adding the environment variables.
 
 The app starts with an empty leaderboard; no sample scores are seeded or loaded from browser storage. Scores are stored centrally and sorted by score, then completion time. The first play reserves the browser's attempt in storage; refreshing or entering a different name does not create another attempt.
 

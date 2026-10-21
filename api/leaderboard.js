@@ -1,93 +1,37 @@
 const crypto = require('node:crypto');
 
 const DEVICE_COOKIE = 'kugompo_device';
-const LEADERBOARD_KEY = 'kugompo:leaderboard:v1';
 const DEVICE_COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60;
 
-const FINISH_ATTEMPT_SCRIPT = `
-local rawAttempt = redis.call('GET', KEYS[1])
-if not rawAttempt then
-  return cjson.encode({ error = 'not_started' })
-end
-
-local attempt = cjson.decode(rawAttempt)
-local submitted = cjson.decode(ARGV[1])
-if attempt.name ~= submitted.name then
-  return cjson.encode({ error = 'name_mismatch' })
-end
-
-if attempt.status == 'finished' then
-  if not attempt.submission
-    or attempt.submission.score ~= submitted.score
-    or attempt.submission.timeTaken ~= submitted.submissionTimeTaken then
-    return cjson.encode({ error = 'already_finished' })
-  end
-  local currentScores = redis.call('GET', KEYS[2]) or '[]'
-  return cjson.encode({ leaderboard = cjson.decode(currentScores), replay = true })
-end
-
-if attempt.status ~= 'started' then
-  return cjson.encode({ error = 'not_started' })
-end
-
-local submissionTimeTaken = submitted.submissionTimeTaken
-submitted.submissionTimeTaken = nil
-local elapsed = math.max(0, math.floor((tonumber(ARGV[2]) - attempt.startedAt) / 1000))
-submitted.timeTaken = math.max(submitted.timeTaken, elapsed)
-
-local rawScores = redis.call('GET', KEYS[2])
-local scores = rawScores and cjson.decode(rawScores) or {}
-table.insert(scores, submitted)
-table.sort(scores, function(a, b)
-  if a.score ~= b.score then
-    return a.score > b.score
-  end
-  if a.timeTaken ~= b.timeTaken then
-    return a.timeTaken < b.timeTaken
-  end
-  if a.timestamp ~= b.timestamp then
-    return a.timestamp < b.timestamp
-  end
-  return a.name < b.name
-end)
-while #scores > 10 do
-  table.remove(scores)
-end
-
-attempt.status = 'finished'
-attempt.submission = {
-  score = submitted.score,
-  timeTaken = submissionTimeTaken
-}
-redis.call('SET', KEYS[2], cjson.encode(scores))
-redis.call('SET', KEYS[1], cjson.encode(attempt))
-return cjson.encode({ leaderboard = scores, replay = false })
-`;
-
-function redisCredentials() {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) {
-    throw new Error('Leaderboard storage is not configured. Set KV_REST_API_URL and KV_REST_API_TOKEN.');
+function supabaseCredentials() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error('Leaderboard storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
-  return { url: url.replace(/\/+$/, ''), token };
+  return { url: url.replace(/\/+$/, ''), serviceRoleKey };
 }
 
-async function redisCommand(command) {
-  const { url, token } = redisCredentials();
-  const response = await fetch(url, {
+async function callSupabaseRpc(functionName, parameters) {
+  const { url, serviceRoleKey } = supabaseCredentials();
+  const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(command)
+    body: JSON.stringify(parameters)
   });
-  const result = await response.json();
-  if (!response.ok || result.error) {
-    throw new Error(result.error || `Leaderboard storage returned HTTP ${response.status}.`);
+  const responseBody = await response.text();
+  if (!response.ok) {
+    throw new Error(`Supabase RPC ${functionName} failed (${response.status}): ${responseBody}`);
   }
-  return result.result;
+  try {
+    return JSON.parse(responseBody);
+  } catch {
+    throw new Error(`Supabase RPC ${functionName} returned invalid JSON.`);
+  }
 }
 
 function readDeviceId(req) {
@@ -99,8 +43,7 @@ function readDeviceId(req) {
 }
 
 function setDeviceCookie(req, res, deviceId) {
-  const isHttps = req.headers['x-forwarded-proto'] === 'https';
-  const secure = isHttps ? '; Secure' : '';
+  const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
     `${DEVICE_COOKIE}=${deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${DEVICE_COOKIE_MAX_AGE}${secure}`
@@ -133,7 +76,9 @@ function publicError(code) {
     already_played: 'This browser has already used its one attempt.',
     already_finished: 'This attempt has already been submitted.',
     name_mismatch: 'The player name must match the name used to start.',
-    not_started: 'Start a new attempt before submitting a score.'
+    not_started: 'Start a new attempt before submitting a score.',
+    invalid_name: 'Enter a player name of 1 to 20 characters.',
+    invalid_submission: 'The submitted score or completion time is invalid.'
   };
   return messages[code] || 'The leaderboard request could not be completed.';
 }
@@ -151,24 +96,16 @@ module.exports = async function handler(req, res) {
     deviceId = crypto.randomUUID();
     setDeviceCookie(req, res, deviceId);
   }
-  const attemptKey = `kugompo:attempt:${deviceId}`;
 
   try {
     if (req.method === 'GET') {
-      const [leaderboardValue, attemptValue] = await Promise.all([
-        redisCommand(['GET', LEADERBOARD_KEY]),
-        redisCommand(['GET', attemptKey])
-      ]);
-      const leaderboard = leaderboardValue ? JSON.parse(leaderboardValue) : [];
-      const attempt = attemptValue ? JSON.parse(attemptValue) : null;
-      if (!Array.isArray(leaderboard)) {
-        throw new Error('Stored leaderboard data is invalid.');
-      }
-      return sendJson(res, 200, {
-        leaderboard,
-        hasUsedAttempt: Boolean(attempt),
-        attemptStatus: attempt ? attempt.status : null
+      const result = await callSupabaseRpc('get_quiz_leaderboard', {
+        p_device_id: deviceId
       });
+      if (!result || !Array.isArray(result.leaderboard) || typeof result.hasUsedAttempt !== 'boolean') {
+        throw new Error('Supabase returned invalid leaderboard data.');
+      }
+      return sendJson(res, 200, result);
     }
 
     let body;
@@ -177,24 +114,22 @@ module.exports = async function handler(req, res) {
     } catch {
       return sendJson(res, 400, { error: 'The request body must be valid JSON.' });
     }
+
     if (body.action === 'start') {
       if (!validateName(body.name)) {
         return sendJson(res, 400, { error: 'Enter a player name of 1 to 20 characters.' });
       }
-      const name = body.name.trim();
-      const result = await redisCommand([
-        'SET',
-        attemptKey,
-        JSON.stringify({ status: 'started', name, startedAt: Date.now() }),
-        'NX'
-      ]);
-      if (result !== 'OK') {
+      const result = await callSupabaseRpc('start_quiz_attempt', {
+        p_device_id: deviceId,
+        p_name: body.name.trim()
+      });
+      if (result.error) {
         return sendJson(res, 409, {
-          code: 'already_played',
-          error: publicError('already_played')
+          code: result.error,
+          error: publicError(result.error)
         });
       }
-      return sendJson(res, 200, { name });
+      return sendJson(res, 200, { name: result.name });
     }
 
     if (body.action === 'finish') {
@@ -209,31 +144,22 @@ module.exports = async function handler(req, res) {
         return sendJson(res, 400, { error: 'The submitted score or completion time is invalid.' });
       }
 
-      const name = body.name.trim();
-      const entry = {
-        name,
-        score: body.score,
-        timeTaken: body.timeTaken,
-        submissionTimeTaken: body.timeTaken,
-        timestamp: new Date().toISOString()
-      };
-      const result = await redisCommand([
-        'EVAL',
-        FINISH_ATTEMPT_SCRIPT,
-        '2',
-        attemptKey,
-        LEADERBOARD_KEY,
-        JSON.stringify(entry),
-        String(Date.now())
-      ]);
-      const outcome = JSON.parse(result);
-      if (outcome.error) {
+      const result = await callSupabaseRpc('finish_quiz_attempt', {
+        p_device_id: deviceId,
+        p_name: body.name.trim(),
+        p_score: body.score,
+        p_time_taken: body.timeTaken
+      });
+      if (result.error) {
         return sendJson(res, 409, {
-          code: outcome.error,
-          error: publicError(outcome.error)
+          code: result.error,
+          error: publicError(result.error)
         });
       }
-      return sendJson(res, 200, { leaderboard: outcome.leaderboard });
+      if (!Array.isArray(result.leaderboard)) {
+        throw new Error('Supabase returned invalid leaderboard data after score submission.');
+      }
+      return sendJson(res, 200, { leaderboard: result.leaderboard });
     }
 
     return sendJson(res, 400, { error: 'Unknown leaderboard action.' });
