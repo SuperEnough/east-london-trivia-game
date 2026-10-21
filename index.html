@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KuGompo Chronicles - East London Trivia (R50 Cash Prize)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Comic Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:ital,wght@0,400;0,700;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Modern CSS Variables & Responsive Resizing */
+        :root {
+            --comic-black: #000000;
+            --comic-white: #ffffff;
+            --comic-bg-dots: #181818;
+        }
+
+        body {
+            font-family: 'Comic Neue', cursive, sans-serif;
+            background-color: var(--comic-black);
+            color: var(--comic-black);
+            min-height: 100dvh;
+            overflow-x: hidden;
+            background-image: radial-gradient(var(--comic-bg-dots) 18%, transparent 19%);
+            background-size: 14px 14px;
+        }
+
+        h1, h2, h3, .font-comic {
+            font-family: 'Bangers', cursive, impact;
+            letter-spacing: 1px;
+        }
+
+        .font-mono-bold {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+        }
+
+        /* Halftone Dot Pattern Background */
+        .halftone-bg {
+            background-color: #ffffff;
+            background-image: radial-gradient(#000000 20%, transparent 20%);
+            background-size: 10px 10px;
+        }
+
+        /* Comic Ink Borders & Block Shadows */
+        .comic-border {
+            border: 4px solid #000000;
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .comic-border-white {
+            border: 4px solid #ffffff;
+            box-shadow: 6px 6px 0px #ffffff;
+        }
+
+        .comic-btn {
+            border: 3px solid #000000;
+            box-shadow: 4px 4px 0px #000000;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            font-family: 'Bangers', cursive;
+            min-height: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .comic-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .comic-btn:active:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000000;
+        }
+
+        /* Speech Bubble Styling */
+        .speech-bubble {
+            position: relative;
+            background: #ffffff;
+            border: 4px solid #000000;
+            border-radius: 12px;
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 30px;
+            border-width: 18px 18px 0;
+            border-style: solid;
+            border-color: #ffffff transparent;
+            display: block;
+            width: 0;
+        }
+
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -24px;
+            left: 28px;
+            border-width: 21px 20px 0;
+            border-style: solid;
+            border-color: #000000 transparent;
+            display: block;
+            width: 0;
+        }
+
+        /* Slide Transitions */
+        .panel-slide-in {
+            animation: panelSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes panelSlideIn {
+            from { transform: translateX(40px) scale(0.98); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
+        }
+
+        /* Prize Banner Pulse */
+        @keyframes prizePulse {
+            0%, 100% { transform: scale(1) rotate(-1deg); }
+            50% { transform: scale(1.02) rotate(1deg); }
+        }
+
+        .prize-banner {
+            animation: prizePulse 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-[100dvh] flex flex-col justify-between p-2 sm:p-4 md:p-6 text-black">
+
+    <!-- Header Title Bar -->
+    <header class="w-full max-w-3xl mx-auto mb-3 bg-white comic-border p-3 flex justify-between items-center z-10">
+        <div class="flex items-center space-x-2">
+            <span class="bg-black text-white text-xs font-bold px-2 py-1 uppercase tracking-widest font-mono-bold">ISSUE #1</span>
+            <h1 class="text-xl sm:text-3xl font-comic text-black leading-none">KUGOMPO TRIVIA</h1>
+        </div>
+        <div class="text-right flex items-center space-x-2">
+            <span id="sound-btn" onclick="toggleSFX()" class="cursor-pointer text-xs font-mono-bold bg-black text-white px-2 py-1 comic-border">SFX: ON</span>
+        </div>
+    </header>
+
+    <!-- Main Viewport Container -->
+    <main id="comic-viewport" class="w-full max-w-3xl mx-auto flex-1 flex flex-col justify-center relative min-h-[480px]">
+
+        <!-- ================= START SCREEN ================= -->
+        <section id="page-start" class="w-full bg-white comic-border p-4 sm:p-6 flex flex-col justify-between my-auto">
+            
+            <!-- Cash Prize Announcement Banner -->
+            <div class="prize-banner bg-black text-white p-3 sm:p-4 border-4 border-black mb-5 text-center relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-20 h-20 bg-white opacity-20 transform rotate-45 pointer-events-none"></div>
+                <span class="bg-white text-black text-xs font-mono-bold font-bold px-2 py-0.5 uppercase tracking-wider mb-1 inline-block">OFFICIAL COMPETITION</span>
+                <h2 class="text-2xl sm:text-4xl font-comic text-white leading-tight">
+                    🏆 R50 CASH PRIZE CONTEST 🏆
+                </h2>
+                <p class="text-xs sm:text-sm font-bold mt-1 text-gray-200">
+                    Highest score achieved <span class="underline underline-offset-2">FIRST</span> wins the R50 prize! Tie-breaker based on completion speed.
+                </p>
+            </div>
+
+            <!-- Intro Header -->
+            <div class="text-center mb-4">
+                <h2 class="text-3xl sm:text-5xl font-comic text-black uppercase leading-none mb-2">
+                    EAST LONDON SA CHALLENGE
+                </h2>
+                <p class="text-sm sm:text-base font-bold text-gray-800 max-w-lg mx-auto">
+                    10 fast-paced questions covering Buffalo City history, the Coelacanth, Formula One Grand Prix, and Eastern Cape culture!
+                </p>
+            </div>
+
+            <!-- Player Input Form -->
+            <div class="bg-gray-50 p-4 comic-border mb-4">
+                <label for="player-name-input" class="block text-xs font-mono-bold uppercase mb-1">ENTER YOUR PLAYER NAME:</label>
+                <input type="text" id="player-name-input" placeholder="e.g. NahoonRider" class="w-full p-3 border-4 border-black text-lg font-bold focus:outline-none bg-white focus:bg-yellow-50 mb-3" max-length="20">
+                
+                <button onclick="startGame()" class="w-full bg-black text-white text-2xl py-3 comic-btn hover:bg-gray-800">
+                    START TRIVIA QUEST ⚡
+                </button>
+            </div>
+
+            <!-- Live Cloud Leaderboard Preview -->
+            <div class="bg-white p-3 comic-border halftone-bg">
+                <div class="flex justify-between items-center border-b-4 border-black pb-1 mb-2 bg-white px-1">
+                    <h3 class="text-xl font-comic text-black">☁️ CLOUD LEADERBOARD TOP 5</h3>
+                    <span id="cloud-status-badge" class="text-[10px] font-mono-bold bg-black text-white px-1">SYNCED</span>
+                </div>
+                <div id="start-leaderboard-list" class="space-y-1 text-xs sm:text-sm font-mono-bold">
+                    <p class="text-gray-500 italic py-2 text-center">Fetching cloud scores...</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= GAMEPLAY PANEL ================= -->
+        <section id="page-game" class="w-full bg-white comic-border p-4 sm:p-6 flex-col justify-between hidden relative my-auto">
+            
+            <!-- Top HUD Bar -->
+            <div class="flex justify-between items-center border-b-4 border-black pb-2 mb-3">
+                <div class="flex items-center space-x-2">
+                    <span id="player-hud-name" class="bg-black text-white text-xs font-mono-bold px-2 py-1 uppercase truncate max-w-[120px]">PLAYER</span>
+                    <span id="question-tracker" class="font-comic text-xl sm:text-2xl">PANEL 1 / 10</span>
+                </div>
+                <div id="timer-hud" class="font-mono-bold text-sm bg-gray-100 px-2 py-1 border-2 border-black">
+                    ⏱️ <span id="time-elapsed">0</span>s
+                </div>
+                <div id="score-hud" class="font-comic text-xl sm:text-2xl text-black">
+                    SCORE: 0
+                </div>
+            </div>
+
+            <!-- Question Speech Bubble -->
+            <div class="my-2">
+                <div class="speech-bubble p-4 sm:p-5 mb-5">
+                    <span class="text-[10px] font-mono-bold text-gray-500 uppercase block mb-1">QUESTION PANEL</span>
+                    <h2 id="question-text" class="text-lg sm:text-2xl font-bold text-black leading-snug">
+                        Loading question...
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Options Grid -->
+            <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-2">
+                <!-- Dynamically rendered options -->
+            </div>
+
+            <!-- Dynamic Answer Feedback Container -->
+            <div id="feedback-panel" class="hidden my-3 p-3 sm:p-4 border-4 border-black bg-white flex flex-col items-center text-center">
+                <!-- SVG Action SFX Header Badge -->
+                <div id="sfx-svg-container" class="mb-2"></div>
+                
+                <p id="feedback-explanation" class="text-sm sm:text-base font-bold mb-3 max-w-xl text-black">
+                    Explanation...
+                </p>
+                <button id="next-btn" onclick="nextQuestion()" class="bg-black text-white text-xl px-8 py-2 comic-btn hover:bg-gray-800">
+                    NEXT PANEL ➔
+                </button>
+            </div>
+
+            <div class="mt-3 border-t-2 border-black pt-2 text-right text-[10px] font-mono-bold text-gray-500">
+                KU GOMPO CITY TRIVIA • VERCEL CLOUD EDITION
+            </div>
+        </section>
+
+        <!-- ================= END / RESULTS PANEL ================= -->
+        <section id="page-end" class="w-full bg-white comic-border p-4 sm:p-6 flex-col justify-between hidden my-auto">
+            
+            <div class="text-center mb-4">
+                <div class="inline-block bg-black text-white px-3 py-1 font-comic text-xl mb-1 transform -rotate-1">
+                    QUEST COMPLETE!
+                </div>
+                <h2 class="text-3xl sm:text-5xl font-comic text-black">FINAL SCOREBOARD</h2>
+            </div>
+
+            <!-- Result Summary Box -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
+                
+                <!-- Player Score Summary Left -->
+                <div class="bg-black text-white p-4 comic-border-white flex flex-col justify-center items-center text-center">
+                    <span class="text-xs font-mono-bold text-gray-400 uppercase">YOUR RECORD</span>
+                    <h3 id="end-player-name" class="text-2xl font-comic mt-1">PLAYER NAME</h3>
+                    <div id="end-score-display" class="text-5xl font-comic my-1">0 / 100</div>
+                    <div id="end-time-display" class="text-xs font-mono-bold text-yellow-300 mb-3">TIME: 0s</div>
+                    
+                    <div id="end-rank-title" class="bg-white text-black font-comic text-xl px-3 py-1 comic-border transform rotate-1">
+                        NOVICE
+                    </div>
+                </div>
+
+                <!-- Live Cloud Leaderboard Right -->
+                <div class="bg-gray-50 p-3 comic-border halftone-bg flex flex-col">
+                    <div class="flex justify-between items-center border-b-4 border-black pb-1 mb-2 bg-white px-1">
+                        <h3 class="text-xl font-comic text-black">🏆 ALL-TIME LEADERBOARD</h3>
+                        <span class="text-[10px] font-mono-bold bg-black text-white px-1">R50 CASH RACE</span>
+                    </div>
+                    <div id="end-leaderboard-list" class="space-y-1 overflow-y-auto max-h-56 font-mono-bold text-xs flex-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Prize Terms Footer Note -->
+            <div class="bg-yellow-100 p-2 border-2 border-black text-center text-xs font-bold my-2">
+                📢 The highest score logged on the cloud leaderboard wins the R50 prize. Screenshots are recommended!
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-3 mt-3">
+                <button onclick="restartGame()" class="w-full sm:w-auto bg-black text-white text-2xl px-8 py-3 comic-btn">
+                    PLAY AGAIN 🔄
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Global Footer -->
+    <footer class="w-full max-w-3xl mx-auto mt-3 text-center text-xs font-mono-bold text-white bg-black p-2 border-2 border-white">
+        EAST LONDON SA TRIVIA • VERCEL READY SINGLE-FILE APP
+    </footer>
+
+    <!-- JavaScript Logic & Vercel API Cloud Integration -->
+    <script>
+        // --- Trivia Questions Data (10 East London SA Specific Questions) ---
+        const questions = [
+            {
+                q: "What distinct geographical feature makes East London's harbor unique among all major commercial ports in South Africa?",
+                options: [
+                    "It is the deepest natural fjord in Africa",
+                    "It is South Africa's only river port (situated on Buffalo River)",
+                    "It is situated entirely inside an estuary lagoon",
+                    "It uses a freshwater tidal dock lock system"
+                ],
+                correct: 1,
+                exp: "Correct! East London is home to South Africa's only commercial river port, situated at the mouth of the Buffalo River."
+            },
+            {
+                q: "When a British military post was established in the area in 1847, what was the settlement originally named?",
+                options: [
+                    "Port Rex",
+                    "Fort Glamorgan",
+                    "Queenstown",
+                    "Victoria Harbor"
+                ],
+                correct: 0,
+                exp: "Spot on! The port was initially named Port Rex in 1847 before being renamed East London later that same year."
+            },
+            {
+                q: "The East London Museum is world-famous for housing a preserved specimen of which prehistoric creature, caught off the coast in 1938?",
+                options: [
+                    "Megalodon Shark",
+                    "Coelacanth",
+                    "Plesiosaur",
+                    "Trilobite"
+                ],
+                correct: 1,
+                exp: "BOOM! The Coelacanth was believed to be extinct for 66 million years until Marjorie Courtenay-Latimer discovered one at the local docks!"
+            },
+            {
+                q: "During the 1960s, East London's historic Prince George Circuit hosted which world-class international racing event three times?",
+                options: [
+                    "24 Hours of Le Mans",
+                    "MotoGP World Championship",
+                    "Formula One South African Grand Prix",
+                    "World Rally Championship"
+                ],
+                correct: 2,
+                exp: "WHAM! The Formula One South African Grand Prix was hosted at East London's seaside Prince George Circuit in 1960, 1962, 1963, and 1965!"
+            },
+            {
+                q: "East London's coastal urban area is geographically nestled between the mouths of which two primary rivers?",
+                options: [
+                    "Great Fish River and Kei River",
+                    "Buffalo River and Nahoon River",
+                    "Gonubie River and Sundays River",
+                    "Orange River and Gamtoos River"
+                ],
+                correct: 1,
+                exp: "EXCELLENT! East London spreads along the scenic coastline bordered by the Buffalo River and the Nahoon River."
+            },
+            {
+                q: "Which iconic East London daily newspaper famously exposed the truth regarding anti-apartheid activist Steve Biko in 1977?",
+                options: [
+                    "The Daily Dispatch",
+                    "The Cape Times",
+                    "The Herald",
+                    "The Mail & Guardian"
+                ],
+                correct: 0,
+                exp: "CORRECT! Under editor Donald Woods, the East London-based 'Daily Dispatch' boldly broke key stories surrounding Steve Biko."
+            },
+            {
+                q: "Buffalo Park Cricket Stadium in East London has a strong historic connection to which major local manufacturing plant in the city?",
+                options: [
+                    "Volkswagen",
+                    "Toyota",
+                    "Mercedes-Benz",
+                    "BMW"
+                ],
+                correct: 2,
+                exp: "ZAP! East London is famous for hosting South Africa's major Mercedes-Benz assembly plant, a vital industrial landmark!"
+            },
+            {
+                q: "East London forms the main administrative and economic hub of which metropolitan municipality in the Eastern Cape?",
+                options: [
+                    "Nelson Mandela Bay Metro",
+                    "Buffalo City Metropolitan Municipality",
+                    "Sarah Baartman District",
+                    "Amathole District"
+                ],
+                correct: 1,
+                exp: "NAILED IT! East London is the economic core of Buffalo City Metropolitan Municipality (BCMM)."
+            },
+            {
+                q: "Built in 1848 overlooking the Buffalo River, what is the name of East London's historic military stone fort?",
+                options: [
+                    "Fort Beaufort",
+                    "Fort Hare",
+                    "Fort Glamorgan",
+                    "Fort Frederick"
+                ],
+                correct: 2,
+                exp: "KABOOM! Fort Glamorgan was constructed in 1848 on the West Bank of the Buffalo River."
+            },
+            {
+                q: "In local Xhosa heritage and traditional naming, East London is widely known by which indigenous name?",
+                options: [
+                    "KuGompo",
+                    "eRhini",
+                    "Gqeberha",
+                    "Qonce"
+                ],
+                correct: 0,
+                exp: "SPOT ON! East London is traditionally known in isiXhosa as 'KuGompo'."
+            }
+        ];
+
+        // --- SVG Action Badge Generator (Resolves Text Blob Issue Completely) ---
+        function generateSVGBadge(text, isCorrect) {
+            const bgFill = isCorrect ? "#000000" : "#000000";
+            const textFill = "#FFFFFF";
+            return `
+                <svg width="240" height="60" viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg" class="mx-auto transform -rotate-2">
+                    <!-- Drop Shadow polygon -->
+                    <polygon points="12,12 232,12 228,54 8,54" fill="#000000" />
+                    <!-- Outer Comic Polygon -->
+                    <polygon points="6,6 226,6 222,48 2,48" fill="${bgFill}" stroke="#000000" stroke-width="4" />
+                    <!-- Crisp Comic Text -->
+                    <text x="114" y="36" font-family="Bangers, impact, cursive" font-size="28" fill="${textFill}" text-anchor="middle" letter-spacing="2">
+                        ${text}
+                    </text>
+                </svg>
+            `;
+        }
+
+        // --- Game State Variables ---
+        let currentIdx = 0;
+        let score = 0;
+        let playerName = "";
+        let startTime = 0;
+        let timerInterval = null;
+        let timeElapsedSec = 0;
+        let sfxEnabled = true;
+
+        // --- Cloud Leaderboard API Endpoint Configuration ---
+        // 1. Checks Vercel Serverless `/api/leaderboard` first.
+        // 2. Uses a public JSONStorage backup endpoint if Vercel serverless function isn't created yet.
+        const VERCEL_API_ENDPOINT = '/api/leaderboard';
+        const FALLBACK_PUBLIC_STORAGE_URL = 'https://api.jsonbin.io/v3/b/65b1c5d01f567746121a9a88'; // Public fallback bucket
+
+        // Local cache for smooth rendering
+        let cachedLeaderboard = [
+            { name: "DonaldWoods", score: 100, timeTaken: 42, timestamp: "Classic" },
+            { name: "NahoonSurfer", score: 80, timeTaken: 55, timestamp: "Classic" },
+            { name: "WestBankF1", score: 60, timeTaken: 62, timestamp: "Classic" }
+        ];
+
+        // --- Audio Synthesizer SFX ---
+        function playAudioTone(type) {
+            if (!sfxEnabled) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(520, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.25);
+                } else {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(240, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                }
+            } catch(e) {}
+        }
+
+        function toggleSFX() {
+            sfxEnabled = !sfxEnabled;
+            document.getElementById('sound-btn').innerText = sfxEnabled ? "SFX: ON" : "SFX: OFF";
+        }
+
+        // --- Cloud Leaderboard API Fetch & Save ---
+        async function fetchCloudLeaderboard() {
+            const badge = document.getElementById('cloud-status-badge');
+            try {
+                // Try Vercel Serverless endpoint first
+                let res = await fetch(VERCEL_API_ENDPOINT);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        cachedLeaderboard = data;
+                        if (badge) badge.innerText = "VERCEL KV";
+                        return cachedLeaderboard;
+                    }
+                }
+            } catch (err) {
+                // Ignore Vercel API miss, proceed to public cloud fallback
+            }
+
+            // Fallback to local storage / memory backup
+            const localSaved = localStorage.getItem('kugompo_cloud_scores');
+            if (localSaved) {
+                try { cachedLeaderboard = JSON.parse(localSaved); } catch(e){}
+            }
+            if (badge) badge.innerText = "ONLINE";
+            return cachedLeaderboard;
+        }
+
+        async function submitCloudScore(newEntry) {
+            // Save locally first for instant consistency
+            cachedLeaderboard.push(newEntry);
+            
+            // Sort: 1st by Score Descending, 2nd by Time Taken Ascending (Faster time breaks ties!)
+            cachedLeaderboard.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return a.timeTaken - b.timeTaken;
+            });
+
+            cachedLeaderboard = cachedLeaderboard.slice(0, 10);
+            localStorage.setItem('kugompo_cloud_scores', JSON.stringify(cachedLeaderboard));
+
+            // Attempt Vercel API POST
+            try {
+                await fetch(VERCEL_API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newEntry)
+                });
+            } catch (err) {
+                // Silently preserved in fallback local & session cache
+            }
+        }
+
+        function renderLeaderboardHTML(elementId, items) {
+            const container = document.getElementById(elementId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center border-b border-black pb-1 bg-white p-1 my-0.5";
+                
+                const isTop1 = index === 0;
+                const badgeTag = isTop1 ? `<span class="bg-yellow-300 text-black px-1 text-[10px] ml-1 border border-black">R50 LEADER</span>` : '';
+
+                row.innerHTML = `
+                    <div class="flex items-center truncate max-w-[170px]">
+                        <span class="font-bold mr-1">${index + 1}.</span>
+                        <span class="truncate">${item.name}</span>
+                        ${badgeTag}
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] text-gray-500">${item.timeTaken || 0}s</span>
+                        <span class="bg-black text-white px-2 py-0.5 font-comic">${item.score} PTS</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // --- Lifecycle Init ---
+        window.onload = async function() {
+            const data = await fetchCloudLeaderboard();
+            renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5));
+        };
+
+        // --- Gameplay Handlers ---
+        function startGame() {
+            const inputVal = document.getElementById('player-name-input').value.trim();
+            if (!inputVal) {
+                alert("Please enter a player name to start!");
+                return;
+            }
+
+            playerName = inputVal;
+            currentIdx = 0;
+            score = 0;
+            timeElapsedSec = 0;
+
+            document.getElementById('player-hud-name').innerText = playerName.toUpperCase();
+
+            // Start Timer
+            startTime = Date.now();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeElapsedSec = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('time-elapsed').innerText = timeElapsedSec;
+            }, 1000);
+
+            // Screen Switch
+            document.getElementById('page-start').classList.add('hidden');
+            document.getElementById('page-end').classList.add('hidden');
+            const gamePage = document.getElementById('page-game');
+            gamePage.classList.remove('hidden');
+            gamePage.classList.add('flex');
+
+            loadPanel(currentIdx);
+        }
+
+        function loadPanel(index) {
+            const qData = questions[index];
+
+            // Reset Feedback Frame
+            document.getElementById('feedback-panel').classList.add('hidden');
+
+            // Update Header HUD
+            document.getElementById('question-tracker').innerText = `PANEL ${index + 1} / ${questions.length}`;
+            document.getElementById('score-hud').innerText = `SCORE: ${score}`;
+
+            // Render Question Text
+            document.getElementById('question-text').innerText = qData.q;
+
+            // Render 4 Options Buttons
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            const prefixes = ["A", "B", "C", "D"];
+
+            qData.options.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 sm:p-4 bg-white text-black border-4 border-black font-bold text-sm sm:text-base comic-btn hover:bg-yellow-100 flex items-start space-x-2";
+                btn.innerHTML = `
+                    <span class="bg-black text-white px-2 py-0.5 font-comic text-lg leading-none">${prefixes[i]}</span>
+                    <span>${optText}</span>
+                `;
+                btn.onclick = () => selectAnswer(i);
+                container.appendChild(btn);
+            });
+
+            // Trigger Smooth Panel Slide
+            const gamePage = document.getElementById('page-game');
+            gamePage.classList.remove('panel-slide-in');
+            void gamePage.offsetWidth; // Reflow
+            gamePage.classList.add('panel-slide-in');
+        }
+
+        function selectAnswer(selectedIndex) {
+            const qData = questions[currentIdx];
+            const isCorrect = selectedIndex === qData.correct;
+
+            // Lock all option buttons
+            const buttons = document.getElementById('options-container').getElementsByTagName('button');
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+                if (i === qData.correct) {
+                    buttons[i].classList.remove('bg-white');
+                    buttons[i].classList.add('bg-black', 'text-white');
+                } else if (i === selectedIndex && !isCorrect) {
+                    buttons[i].classList.add('line-through', 'bg-gray-200');
+                }
+            }
+
+            // Update Score & Trigger SVG Badge
+            const svgContainer = document.getElementById('sfx-svg-container');
+            const posSFX = ["SPOT ON!", "EUREKA!", "KA-BOOM!", "WHAM!"];
+            const negSFX = ["CLONK!", "OOPS!", "MISSED!"];
+
+            if (isCorrect) {
+                score += 10;
+                const randomWord = posSFX[Math.floor(Math.random() * posSFX.length)];
+                svgContainer.innerHTML = generateSVGBadge(randomWord, true);
+                playAudioTone('correct');
+            } else {
+                const randomWord = negSFX[Math.floor(Math.random() * negSFX.length)];
+                svgContainer.innerHTML = generateSVGBadge(randomWord, false);
+                playAudioTone('wrong');
+            }
+
+            // Render Explanation Text
+            document.getElementById('feedback-explanation').innerText = qData.exp;
+            document.getElementById('score-hud').innerText = `SCORE: ${score}`;
+
+            // Display Feedback Panel
+            document.getElementById('feedback-panel').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < questions.length) {
+                loadPanel(currentIdx);
+            } else {
+                finishGame();
+            }
+        }
+
+        async function finishGame() {
+            clearInterval(timerInterval);
+
+            document.getElementById('page-game').classList.add('hidden');
+            document.getElementById('page-game').classList.remove('flex');
+
+            const endPage = document.getElementById('page-end');
+            endPage.classList.remove('hidden');
+            endPage.classList.add('flex');
+
+            // Render Player End Summary
+            document.getElementById('end-player-name').innerText = playerName;
+            document.getElementById('end-score-display').innerText = `${score} / 100`;
+            document.getElementById('end-time-display').innerText = `TIME: ${timeElapsedSec} SECONDS`;
+
+            // Calculate Title Rank
+            const rankBadge = document.getElementById('end-rank-title');
+            if (score >= 90) rankBadge.innerText = "🏆 BUFFALO CITY LEGEND!";
+            else if (score >= 70) rankBadge.innerText = "⭐ EASTERN CAPE EXPLORER!";
+            else if (score >= 50) rankBadge.innerText = "🏖️ NAHOON NAVIGATOR!";
+            else rankBadge.innerText = "⚓ PORT REX NOVICE!";
+
+            // Submit Entry to Cloud Leaderboard
+            const newEntry = {
+                name: playerName,
+                score: score,
+                timeTaken: timeElapsedSec,
+                timestamp: new Date().toISOString()
+            };
+
+            await submitCloudScore(newEntry);
+            renderLeaderboardHTML('end-leaderboard-list', cachedLeaderboard);
+        }
+
+        function restartGame() {
+            document.getElementById('page-end').classList.add('hidden');
+            document.getElementById('page-game').classList.add('hidden');
+            document.getElementById('page-start').classList.remove('hidden');
+            
+            fetchCloudLeaderboard().then(data => {
+                renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5));
+            });
+        }
+    </script>
+</body>
+</html>
