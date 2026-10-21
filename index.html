@@ -178,11 +178,12 @@
             <!-- Player Input Form -->
             <div class="bg-gray-50 p-4 comic-border mb-4">
                 <label for="player-name-input" class="block text-xs font-mono-bold uppercase mb-1">ENTER YOUR PLAYER NAME:</label>
-                <input type="text" id="player-name-input" placeholder="e.g. NahoonRider" class="w-full p-3 border-4 border-black text-lg font-bold focus:outline-none bg-white focus:bg-yellow-50 mb-3" max-length="20">
+                <input type="text" id="player-name-input" placeholder="e.g. NahoonRider" class="w-full p-3 border-4 border-black text-lg font-bold focus:outline-none bg-white focus:bg-yellow-50 mb-3" maxlength="20" disabled>
                 
-                <button onclick="startGame()" class="w-full bg-black text-white text-2xl py-3 comic-btn hover:bg-gray-800">
+                <button id="start-game-button" onclick="startGame()" class="w-full bg-black text-white text-2xl py-3 comic-btn hover:bg-gray-800" disabled>
                     START TRIVIA QUEST ⚡
                 </button>
+                <p id="start-status" class="text-xs font-bold mt-2 text-center" role="status" aria-live="polite">Connecting to the leaderboard...</p>
             </div>
 
             <!-- Live Cloud Leaderboard Preview -->
@@ -244,7 +245,7 @@
             </div>
 
             <div class="mt-3 border-t-2 border-black pt-2 text-right text-[10px] font-mono-bold text-gray-500">
-                KU GOMPO CITY TRIVIA • VERCEL CLOUD EDITION
+                KU GOMPO CITY TRIVIA
             </div>
         </section>
 
@@ -273,6 +274,11 @@
                     </div>
                 </div>
 
+                <p id="end-submit-status" class="text-xs font-bold text-center md:col-span-2" role="status" aria-live="polite">Saving your score...</p>
+                <button id="end-retry-button" onclick="submitFinalScore()" class="hidden bg-black text-white text-lg px-5 py-2 comic-btn md:col-span-2" disabled>
+                    RETRY SCORE SUBMISSION
+                </button>
+
                 <!-- Live Cloud Leaderboard Right -->
                 <div class="bg-gray-50 p-3 comic-border halftone-bg flex flex-col">
                     <div class="flex justify-between items-center border-b-4 border-black pb-1 mb-2 bg-white px-1">
@@ -294,7 +300,7 @@
             <!-- Action Buttons -->
             <div class="flex flex-col sm:flex-row justify-center items-center gap-3 mt-3">
                 <button onclick="restartGame()" class="w-full sm:w-auto bg-black text-white text-2xl px-8 py-3 comic-btn">
-                    PLAY AGAIN 🔄
+                VIEW LEADERBOARD ↗
                 </button>
             </div>
         </section>
@@ -303,7 +309,7 @@
 
     <!-- Global Footer -->
     <footer class="w-full max-w-3xl mx-auto mt-3 text-center text-xs font-mono-bold text-white bg-black p-2 border-2 border-white">
-        EAST LONDON SA TRIVIA • VERCEL READY SINGLE-FILE APP
+        EAST LONDON SA TRIVIA
     </footer>
 
     <!-- JavaScript Logic & Vercel API Cloud Integration -->
@@ -449,18 +455,10 @@
         let timeElapsedSec = 0;
         let sfxEnabled = true;
 
-        // --- Cloud Leaderboard API Endpoint Configuration ---
-        // 1. Checks Vercel Serverless `/api/leaderboard` first.
-        // 2. Uses a public JSONStorage backup endpoint if Vercel serverless function isn't created yet.
-        const VERCEL_API_ENDPOINT = '/api/leaderboard';
-        const FALLBACK_PUBLIC_STORAGE_URL = 'https://api.jsonbin.io/v3/b/65b1c5d01f567746121a9a88'; // Public fallback bucket
-
-        // Local cache for smooth rendering
-        let cachedLeaderboard = [
-            { name: "DonaldWoods", score: 100, timeTaken: 42, timestamp: "Classic" },
-            { name: "NahoonSurfer", score: 80, timeTaken: 55, timestamp: "Classic" },
-            { name: "WestBankF1", score: 60, timeTaken: 62, timestamp: "Classic" }
-        ];
+        const LEADERBOARD_API_ENDPOINT = '/api/leaderboard';
+        let cachedLeaderboard = [];
+        let leaderboardReady = false;
+        let hasUsedAttempt = false;
 
         // --- Audio Synthesizer SFX ---
         function playAudioTone(type) {
@@ -497,55 +495,52 @@
             document.getElementById('sound-btn').innerText = sfxEnabled ? "SFX: ON" : "SFX: OFF";
         }
 
-        // --- Cloud Leaderboard API Fetch & Save ---
+        // --- Shared Leaderboard API ---
         async function fetchCloudLeaderboard() {
             const badge = document.getElementById('cloud-status-badge');
-            try {
-                // Try Vercel Serverless endpoint first
-                let res = await fetch(VERCEL_API_ENDPOINT);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        cachedLeaderboard = data;
-                        if (badge) badge.innerText = "VERCEL KV";
-                        return cachedLeaderboard;
-                    }
-                }
-            } catch (err) {
-                // Ignore Vercel API miss, proceed to public cloud fallback
+            const response = await fetch(LEADERBOARD_API_ENDPOINT);
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'The shared leaderboard is unavailable.');
+            }
+            if (!Array.isArray(data.leaderboard) || typeof data.hasUsedAttempt !== 'boolean') {
+                throw new Error('The leaderboard returned an invalid response.');
             }
 
-            // Fallback to local storage / memory backup
-            const localSaved = localStorage.getItem('kugompo_cloud_scores');
-            if (localSaved) {
-                try { cachedLeaderboard = JSON.parse(localSaved); } catch(e){}
-            }
-            if (badge) badge.innerText = "ONLINE";
+            cachedLeaderboard = data.leaderboard;
+            hasUsedAttempt = data.hasUsedAttempt;
+            leaderboardReady = true;
+            if (badge) badge.innerText = "SHARED";
+            updateStartAvailability();
             return cachedLeaderboard;
         }
 
-        async function submitCloudScore(newEntry) {
-            // Save locally first for instant consistency
-            cachedLeaderboard.push(newEntry);
-            
-            // Sort: 1st by Score Descending, 2nd by Time Taken Ascending (Faster time breaks ties!)
-            cachedLeaderboard.sort((a, b) => {
-                if (b.score !== a.score) return b.score - a.score;
-                return a.timeTaken - b.timeTaken;
+        async function postLeaderboardAction(action, details) {
+            const response = await fetch(LEADERBOARD_API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...details })
             });
+            const data = await response.json();
+            if (!response.ok) {
+                const error = new Error(data.error || 'The leaderboard request failed.');
+                error.code = data.code;
+                throw error;
+            }
+            return data;
+        }
 
-            cachedLeaderboard = cachedLeaderboard.slice(0, 10);
-            localStorage.setItem('kugompo_cloud_scores', JSON.stringify(cachedLeaderboard));
-
-            // Attempt Vercel API POST
-            try {
-                await fetch(VERCEL_API_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newEntry)
-                });
-            } catch (err) {
-                // Silently preserved in fallback local & session cache
+        function updateStartAvailability() {
+            const input = document.getElementById('player-name-input');
+            const button = document.getElementById('start-game-button');
+            const status = document.getElementById('start-status');
+            const canStart = leaderboardReady && !hasUsedAttempt;
+            input.disabled = !canStart;
+            button.disabled = !canStart;
+            if (hasUsedAttempt) {
+                status.innerText = "This browser has already used its one attempt.";
+            } else if (leaderboardReady) {
+                status.innerText = "One attempt per browser. Your score is shared on the leaderboard.";
             }
         }
 
@@ -554,43 +549,93 @@
             if (!container) return;
             container.innerHTML = '';
 
+            if (items.length === 0) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = "text-gray-500 italic py-2 text-center";
+                emptyMessage.innerText = "No scores yet. Be the first to play!";
+                container.appendChild(emptyMessage);
+                return;
+            }
+
             items.forEach((item, index) => {
                 const row = document.createElement('div');
                 row.className = "flex justify-between items-center border-b border-black pb-1 bg-white p-1 my-0.5";
                 
                 const isTop1 = index === 0;
-                const badgeTag = isTop1 ? `<span class="bg-yellow-300 text-black px-1 text-[10px] ml-1 border border-black">R50 LEADER</span>` : '';
+                const player = document.createElement('div');
+                player.className = "flex items-center truncate max-w-[170px]";
+                const position = document.createElement('span');
+                position.className = "font-bold mr-1";
+                position.innerText = `${index + 1}.`;
+                const name = document.createElement('span');
+                name.className = "truncate";
+                name.innerText = item.name;
+                player.append(position, name);
+                if (isTop1) {
+                    const badge = document.createElement('span');
+                    badge.className = "bg-yellow-300 text-black px-1 text-[10px] ml-1 border border-black";
+                    badge.innerText = "R50 LEADER";
+                    player.appendChild(badge);
+                }
 
-                row.innerHTML = `
-                    <div class="flex items-center truncate max-w-[170px]">
-                        <span class="font-bold mr-1">${index + 1}.</span>
-                        <span class="truncate">${item.name}</span>
-                        ${badgeTag}
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-[10px] text-gray-500">${item.timeTaken || 0}s</span>
-                        <span class="bg-black text-white px-2 py-0.5 font-comic">${item.score} PTS</span>
-                    </div>
-                `;
+                const result = document.createElement('div');
+                result.className = "flex items-center space-x-2";
+                const time = document.createElement('span');
+                time.className = "text-[10px] text-gray-500";
+                time.innerText = `${item.timeTaken || 0}s`;
+                const points = document.createElement('span');
+                points.className = "bg-black text-white px-2 py-0.5 font-comic";
+                points.innerText = `${item.score} PTS`;
+                result.append(time, points);
+                row.append(player, result);
                 container.appendChild(row);
             });
         }
 
         // --- Lifecycle Init ---
         window.onload = async function() {
-            const data = await fetchCloudLeaderboard();
-            renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5));
+            try {
+                const data = await fetchCloudLeaderboard();
+                renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5));
+            } catch (error) {
+                const badge = document.getElementById('cloud-status-badge');
+                badge.innerText = "OFFLINE";
+                document.getElementById('start-status').innerText = error.message;
+                renderLeaderboardHTML('start-leaderboard-list', []);
+                const emptyMessage = document.querySelector('#start-leaderboard-list p');
+                if (emptyMessage) emptyMessage.innerText = "Leaderboard unavailable. Please try again later.";
+            }
         };
 
         // --- Gameplay Handlers ---
-        function startGame() {
+        async function startGame() {
             const inputVal = document.getElementById('player-name-input').value.trim();
             if (!inputVal) {
                 alert("Please enter a player name to start!");
                 return;
             }
 
-            playerName = inputVal;
+            if (!leaderboardReady || hasUsedAttempt) return;
+            const startButton = document.getElementById('start-game-button');
+            const status = document.getElementById('start-status');
+            startButton.disabled = true;
+            status.innerText = "Reserving your one attempt...";
+            try {
+                const data = await postLeaderboardAction('start', { name: inputVal });
+                playerName = data.name;
+                hasUsedAttempt = true;
+                updateStartAvailability();
+            } catch (error) {
+                if (error.code === 'already_played') {
+                    hasUsedAttempt = true;
+                    updateStartAvailability();
+                } else {
+                    status.innerText = error.message;
+                    startButton.disabled = false;
+                }
+                return;
+            }
+
             currentIdx = 0;
             score = 0;
             timeElapsedSec = 0;
@@ -723,15 +768,34 @@
             else if (score >= 50) rankBadge.innerText = "🏖️ NAHOON NAVIGATOR!";
             else rankBadge.innerText = "⚓ PORT REX NOVICE!";
 
-            // Submit Entry to Cloud Leaderboard
-            const newEntry = {
-                name: playerName,
-                score: score,
-                timeTaken: timeElapsedSec,
-                timestamp: new Date().toISOString()
-            };
+            const status = document.getElementById('end-submit-status');
+            await submitFinalScore();
+            renderLeaderboardHTML('end-leaderboard-list', cachedLeaderboard);
+        }
 
-            await submitCloudScore(newEntry);
+        async function submitFinalScore() {
+            const status = document.getElementById('end-submit-status');
+            const retryButton = document.getElementById('end-retry-button');
+            retryButton.disabled = true;
+            retryButton.classList.add('hidden');
+            status.innerText = "Saving your score to the shared leaderboard...";
+            try {
+                const data = await postLeaderboardAction('finish', {
+                    name: playerName,
+                    score,
+                    timeTaken: timeElapsedSec
+                });
+                if (!Array.isArray(data.leaderboard)) {
+                    throw new Error('The leaderboard returned an invalid response.');
+                }
+                cachedLeaderboard = data.leaderboard;
+                status.innerText = "Your score has been saved to the shared leaderboard.";
+            } catch (error) {
+                status.innerText = `Your attempt is used, but the score could not be saved: ${error.message}`;
+                retryButton.classList.remove('hidden');
+            } finally {
+                retryButton.disabled = false;
+            }
             renderLeaderboardHTML('end-leaderboard-list', cachedLeaderboard);
         }
 
@@ -740,9 +804,11 @@
             document.getElementById('page-game').classList.add('hidden');
             document.getElementById('page-start').classList.remove('hidden');
             
-            fetchCloudLeaderboard().then(data => {
-                renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5));
-            });
+            fetchCloudLeaderboard()
+                .then(data => renderLeaderboardHTML('start-leaderboard-list', data.slice(0, 5)))
+                .catch(error => {
+                    document.getElementById('start-status').innerText = error.message;
+                });
         }
     </script>
 </body>
